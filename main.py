@@ -11,27 +11,31 @@ version = "PL"
 window.title("Kalkulator E-recepty")
 window.config(height=500, width=1000, padx=10, pady=10, bg=BACKGROUND_COLOR)
 
-# canvas = tkinter.Canvas(height=500, width=1000)
-# canvas.grid(row=0, column=0)
-# canvas.create_text(10, 10,text="Hello")
+insulin_switch = False
 
 
 def insulin():
+    global insulin_switch
     insulin_entry.grid()
     insulin_label.grid()
     dose_label.config(text="Podaj ilość jednostek we wkładzie:")
     usage_label.config(text="Podaj liczbę jednostek, jaką pacjent stosuje na dzień:")
     smallest_box_label.grid_remove()
     smallest_box_entry.grid_remove()
+    amount_bought_label.config(text="Podaj liczbę wkładów, jaka została wtedy wykupiona:")
+    insulin_switch = True
 
 
 def pills():
+    global insulin_switch
     insulin_entry.grid_remove()
     insulin_label.grid_remove()
     dose_label.config(text="Podaj ilość sztuk w opakowaniu:")
     usage_label.config(text="Podaj liczbę sztuk, jaką pacjent stosuje na dzień:")
     smallest_box_label.grid()
     smallest_box_entry.grid()
+    amount_bought_label.config(text="Podaj liczbę sztuk, jaka została wtedy wykupiona:")
+    insulin_switch = False
 
 
 def previous_buys():
@@ -63,29 +67,126 @@ def hide_previous_buys():
 
 
 def calculate_results():
+    global insulin_switch
+    if insulin_switch:
+        calculate_insulin()
+        return
+    message = ""
     try:
-        issue_day = day_entry.get().replace(',', '.')
-        issue_month = month_entry.get().replace(',', '.')
-        issue_year = year_entry.get().replace(',', '.')
-        number_of_boxes = boxes_entry.get().replace(',', '.')
-        number_of_doses_in_box = dose_entry.get().replace(',', '.')
-        doses_taken_daily = usage_entry.get().replace(',', '.')
+        issue_day = int(day_entry.get().replace(',', '.'))
+        issue_month = int(month_entry.get().replace(',', '.'))
+        issue_year = int(year_entry.get().replace(',', '.'))
+        issue_date = datetime.datetime(year=issue_year, month=issue_month, day=issue_day)
+        number_of_boxes = float(boxes_entry.get().replace(',', '.'))
+        number_of_boxes_left = number_of_boxes
+        boxes_lost = 0
+        number_of_doses_in_box = float(dose_entry.get().replace(',', '.'))
+        doses_taken_daily = float(usage_entry.get().replace(',', '.'))
+        days_passed_since_issue = (datetime.datetime.now() - issue_date).days
+
+        if days_passed_since_issue > 30:
+            boxes_lost = int((days_passed_since_issue * doses_taken_daily)//number_of_doses_in_box)
+            result_text.configure(state=tkinter.NORMAL)
+            result_text.delete("1.0", tkinter.END)
+            message += f"Przepadło {boxes_lost} op.\n"
+            result_text.configure(state=tkinter.DISABLED, bg=BACKGROUND_COLOR)
+            number_of_boxes_left = number_of_boxes - boxes_lost
+
+        if days_passed_since_issue < 0:
+            date_issued_label.config(text="PODANO BŁĘDNĄ DATĘ", bg="red")
+            result_text.configure(state=tkinter.NORMAL, bg=BACKGROUND_COLOR)
+            result_text.delete("1.0", tkinter.END)
+            result_text.configure(state=tkinter.DISABLED)
+            return
+        else:
+            date_issued_label.config(text="Podaj datę wystawienia:", bg=BACKGROUND_COLOR2)
+
+        # try:
+        #     float(smallest_box_entry.get())
+        #     print("yes")
+        # except ValueError:
+        #     print("no")
 
         boxes_to_give = int((float(doses_taken_daily)*120)//float(number_of_doses_in_box))
-        if boxes_to_give >= float(number_of_boxes):
-            boxes_to_give = "wszystkie"
-        result_label.configure(state=tkinter.NORMAL)
-        result_label.delete("1.0", tkinter.END)
-        result_label.insert("1.0", f"Można wydać {boxes_to_give} op.")
+        if boxes_to_give >= number_of_boxes_left:
+            boxes_to_give = int(number_of_boxes_left)
+
+        result_text.configure(state=tkinter.NORMAL, bg=BACKGROUND_COLOR)
+        result_text.delete("1.0", tkinter.END)
+        message += f"Można wydać {boxes_to_give} op.\n"
+
+        if number_of_boxes_left > boxes_to_give:
+            days_of_therapy_covered = int((boxes_to_give*number_of_doses_in_box/doses_taken_daily)*3/4)
+            message += f"Reszta najwcześniej po {(datetime.datetime.now() + datetime.timedelta(days=days_of_therapy_covered)).strftime('%d.%m.%Y')} <<<<"
+
+        result_text.insert("1.0", message)
+        result_text.configure(state=tkinter.DISABLED)
+
     except ValueError:
-        result_label.configure(state=tkinter.NORMAL)
-        result_label.delete("1.0", tkinter.END)
-        result_label.insert("1.0", "PODANO BŁĘDNE\nLUB NIEKOMPLETNE DANE")
+        result_text.configure(state=tkinter.NORMAL)
+        result_text.delete("1.0", tkinter.END)
+        result_text.insert("1.0", "PODANO BŁĘDNE\nLUB NIEKOMPLETNE DANE")
+        result_text.configure(state=tkinter.DISABLED, bg="red")
 
 
-result_label = tkinter.Text( background=BACKGROUND_COLOR, fg="#280274", font=FONT, width=50, height=6)
-result_label.configure(state=tkinter.DISABLED)
-result_label.grid(row=0, column=0, sticky="nw")
+def calculate_insulin():
+    message = ""
+    try:
+        issue_day = int(day_entry.get().replace(',', '.'))
+        issue_month = int(month_entry.get().replace(',', '.'))
+        issue_year = int(year_entry.get().replace(',', '.'))
+        issue_date = datetime.datetime(year=issue_year, month=issue_month, day=issue_day)
+        number_of_boxes = float(boxes_entry.get().replace(',', '.'))
+        number_of_boxes_left = number_of_boxes
+        number_of_fills_in_box = int(insulin_entry.get().replace(',', '.'))
+        number_of_fills_left = number_of_boxes * number_of_fills_in_box
+        boxes_lost = 0
+        number_of_units_in_fill = float(dose_entry.get().replace(',', '.'))
+        units_taken_daily = float(usage_entry.get().replace(',', '.'))
+        days_passed_since_issue = (datetime.datetime.now() - issue_date).days
+
+        if days_passed_since_issue > 30:
+            fills_lost = int((days_passed_since_issue * units_taken_daily) // number_of_units_in_fill)
+            result_text.configure(state=tkinter.NORMAL)
+            result_text.delete("1.0", tkinter.END)
+            message += f"Przepadło {fills_lost} wkładów.\n"
+            result_text.configure(state=tkinter.DISABLED, bg=BACKGROUND_COLOR)
+            number_of_fills_left = (number_of_boxes * number_of_fills_in_box) - fills_lost
+
+        if days_passed_since_issue < 0:
+            date_issued_label.config(text="PODANO BŁĘDNĄ DATĘ", bg="red")
+            result_text.configure(state=tkinter.NORMAL, bg=BACKGROUND_COLOR)
+            result_text.delete("1.0", tkinter.END)
+            result_text.configure(state=tkinter.DISABLED)
+            return
+        else:
+            date_issued_label.config(text="Podaj datę wystawienia:", bg=BACKGROUND_COLOR2)
+
+        fills_to_give = int((float(units_taken_daily) * 120) // float(number_of_units_in_fill))
+        if fills_to_give >= number_of_fills_left:
+            fills_to_give = int(number_of_fills_left)
+
+        result_text.configure(state=tkinter.NORMAL, bg=BACKGROUND_COLOR)
+        result_text.delete("1.0", tkinter.END)
+        message += f"Można wydać {fills_to_give} wkładów, czyli {fills_to_give/number_of_fills_in_box} op.\n"
+
+        if number_of_fills_left > fills_to_give:
+            days_of_therapy_covered = int((fills_to_give * number_of_units_in_fill / units_taken_daily) * 3 / 4)
+            message += f"Reszta najwcześniej po {(datetime.datetime.now() + datetime.timedelta(days=days_of_therapy_covered)).strftime('%d.%m.%Y')} <<<<"
+
+        result_text.insert("1.0", message)
+        result_text.configure(state=tkinter.DISABLED)
+
+    except ValueError:
+        result_text.configure(state=tkinter.NORMAL)
+        result_text.delete("1.0", tkinter.END)
+        result_text.insert("1.0", "PODANO BŁĘDNE\nLUB NIEKOMPLETNE DANE")
+        result_text.configure(state=tkinter.DISABLED, bg="red")
+
+
+result_text = tkinter.Text(background=BACKGROUND_COLOR, fg="#280274", font=FONT, width=50, height=6)
+result_text.configure(state=tkinter.DISABLED)
+result_text.grid(row=0, column=0, sticky="nw")
 
 right_canvas = tkinter.Canvas(background=BACKGROUND_COLOR, width=20, height=1000, highlightthickness=0)
 right_canvas.grid(row=0, column=3, rowspan=20)
