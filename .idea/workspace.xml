@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="623733d5-c5ce-4438-a2f6-b72087628751" name="Changes" comment="add first grid labels and buttons">
+    <list default="true" id="623733d5-c5ce-4438-a2f6-b72087628751" name="Changes" comment="add type change buttons">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
@@ -23,9 +23,9 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 2
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 2
+}</component>
   <component name="ProjectId" id="2bXjU0gtG7VZcsgukNA8ui0S1lJ" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
@@ -37,7 +37,8 @@
     "Python.main.executor": "Run",
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "master"
+    "git-widget-placeholder": "master",
+    "last_opened_file_path": "C:/Users/Wiktor/Desktop/i/TECHNOLOGIE WEBOWE/PROJEKT Wiktor Słodziński D1 150966"
   }
 }]]></component>
   <component name="SharedIndexes">
@@ -64,7 +65,15 @@
       <option name="project" value="LOCAL" />
       <updated>1706372175030</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="add type change buttons">
+      <option name="closed" value="true" />
+      <created>1706374136895</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1706374136895</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -80,6 +89,7 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="add first grid labels and buttons" />
-    <option name="LAST_COMMIT_MESSAGE" value="add first grid labels and buttons" />
+    <MESSAGE value="add type change buttons" />
+    <option name="LAST_COMMIT_MESSAGE" value="add type change buttons" />
   </component>
 </project>
