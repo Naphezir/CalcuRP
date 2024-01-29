@@ -188,6 +188,15 @@ result_text = tkinter.Text(background=BACKGROUND_COLOR, fg="#280274", font=FONT,
 result_text.configure(state=tkinter.DISABLED)
 result_text.grid(row=0, column=0, sticky="nw")
 
+yearly = tkinter.Checkbutton(text="Rp roczna?",background=BACKGROUND_COLOR)
+yearly.grid(row=0, column=1, sticky="n")
+
+check_button2 = tkinter.Checkbutton(text="Another question?",background=BACKGROUND_COLOR)
+check_button2.grid(row=0, column=1)
+
+check_button3 = tkinter.Checkbutton(text="Third question?",background=BACKGROUND_COLOR)
+check_button3.grid(row=0, column=1, sticky="s")
+
 right_canvas = tkinter.Canvas(background=BACKGROUND_COLOR, width=20, height=1000, highlightthickness=0)
 right_canvas.grid(row=0, column=3, rowspan=20)
 bottom_canvas = tkinter.Canvas(background=BACKGROUND_COLOR, width=1000, height=10, highlightthickness=0)
