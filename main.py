@@ -64,6 +64,50 @@ def hide_previous_buys():
     bought_button.grid_remove()
     previous_buy_button.config(command=previous_buys)
 
+
+# def calculate_insulin_yearly():
+#     message = ""
+#     issue_day = int(day_entry.get().replace(',', '.'))
+#     issue_month = int(month_entry.get().replace(',', '.'))
+#     issue_year = int(year_entry.get().replace(',', '.'))
+#     issue_date = datetime.datetime(year=issue_year, month=issue_month, day=issue_day)
+#     number_of_boxes = float(boxes_entry.get().replace(',', '.'))
+#     number_of_fills_in_box = int(insulin_entry.get().replace(',', '.'))
+#     number_of_fills_left = int(number_of_boxes * number_of_fills_in_box)
+#     fills_lost = 0
+#     number_of_units_in_fill = float(dose_entry.get().replace(',', '.'))
+#     units_taken_daily = float(usage_entry.get().replace(',', '.'))
+#     days_passed_since_issue = (datetime.datetime.now() - issue_date).days
+#     if days_passed_since_issue > 30:
+#         fills_lost = int((days_passed_since_issue * units_taken_daily) // number_of_units_in_fill)
+#         result_text.configure(state=tkinter.NORMAL)
+#         result_text.delete("1.0", tkinter.END)
+#         message += f"Przepadło {fills_lost} wkładów.\n"
+#         result_text.configure(state=tkinter.DISABLED, bg=BACKGROUND_COLOR)
+#         number_of_fills_left = (number_of_boxes * number_of_fills_in_box) - fills_lost
+#
+#     fills_to_give = int((units_taken_daily * 120) // number_of_units_in_fill)
+#     if fills_to_give >= number_of_fills_left:
+#         if fills_lost:
+#             message = f"Można wydać wszystkie pozostałe {fills_to_give} wkłady,\nczyli {fills_to_give/number_of_fills_in_box} op."
+#         else:
+#             message = f"Można wydać wszystkie op."
+#     else:
+#         days_of_therapy_3_4 = int((fills_to_give * number_of_units_in_fill / units_taken_daily) * 3 / 4)
+#         next_buy_date= (datetime.datetime.now() + datetime.timedelta(days=days_of_therapy_3_4)).strftime('%d.%m.%Y')
+#         message = (f"Można wydać {fills_to_give} wkładów,\nczyli {fills_to_give / number_of_fills_in_box}op."
+#                    f"\nReszta najwcześniej po {next_buy_date}!")
+#         if number_of_fills_left > fills_to_give + fills_lost:
+#             next_portion_box_number = fills_to_give*2 + 1
+#             message += (f"\nPozostała ilość począwszy od {next_portion_box_number}. wkładu.\n po {days_of_therapy_3_4}"
+#                         f"dniach od {fills_to_give+1}. wkładu.")
+#
+#     result_text.configure(state=tkinter.NORMAL, bg=BACKGROUND_COLOR)
+#     result_text.delete("1.0", tkinter.END)
+#     result_text.insert("1.0", message)
+#     result_text.configure(state=tkinter.DISABLED)
+#     return
+
 def calculate_insulin_yearly():
     message = ""
     issue_day = int(day_entry.get().replace(',', '.'))
@@ -92,15 +136,22 @@ def calculate_insulin_yearly():
         else:
             message = f"Można wydać wszystkie op."
     else:
+        fills_left_after_first_buy = number_of_fills_left - fills_to_give
         days_of_therapy_3_4 = int((fills_to_give * number_of_units_in_fill / units_taken_daily) * 3 / 4)
-        next_buy_date= (datetime.datetime.now() + datetime.timedelta(days=days_of_therapy_3_4)).strftime('%d.%m.%Y')
-        message = (f"Można wydać {fills_to_give} wkładów,\nczyli {fills_to_give / number_of_fills_in_box}op."
-                   f"\nReszta najwcześniej po {next_buy_date}!")
-        if number_of_fills_left > fills_to_give + fills_lost:
-            next_portion_box_number = fills_to_give*2 + 1
-            message += (f"\nPozostała ilość począwszy od {next_portion_box_number}. wkładu.\n po {days_of_therapy_3_4}"
+        next_buy_date = (datetime.datetime.now() + datetime.timedelta(days=days_of_therapy_3_4)).strftime('%d.%m.%Y')
+        next_portion = fills_left_after_first_buy
+        if next_portion > fills_to_give:
+            next_portion = fills_to_give
+        message = (f"Można wydać {fills_to_give} wkładów, czyli {fills_to_give / number_of_fills_in_box}op."
+                   f"\nKolejne {next_portion} wkł. czyli {next_portion/number_of_fills_in_box} op. najwcześniej po {next_buy_date}!")
+        if fills_left_after_first_buy > 0:
+            next_portion_fill_number = fills_to_give + next_portion + 1
+            message += (f"\nPozostała ilość począwszy od {next_portion_fill_number}. wkładu\npo {days_of_therapy_3_4} "
                         f"dniach od {fills_to_give+1}. wkładu.")
-
+        if number_of_boxes > (fills_lost/number_of_fills_in_box) + (fills_to_give/number_of_fills_in_box) + (next_portion/number_of_fills_in_box):
+            maximum_amount_to_give = int((units_taken_daily*360) // number_of_units_in_fill)
+            if maximum_amount_to_give < number_of_fills_left:
+                message += f"\nMaksymalnie łącznie można wydać {maximum_amount_to_give} wkł. czyli {maximum_amount_to_give/number_of_fills_in_box} op."
     result_text.configure(state=tkinter.NORMAL, bg=BACKGROUND_COLOR)
     result_text.delete("1.0", tkinter.END)
     result_text.insert("1.0", message)
@@ -114,8 +165,8 @@ def calculate_pills_yearly():
     issue_month = int(month_entry.get().replace(',', '.'))
     issue_year = int(year_entry.get().replace(',', '.'))
     issue_date = datetime.datetime(year=issue_year, month=issue_month, day=issue_day)
-    number_of_boxes = float(boxes_entry.get().replace(',', '.'))
-    number_of_boxes_left = number_of_boxes
+    initial_number_of_boxes = float(boxes_entry.get().replace(',', '.'))
+    number_of_boxes_left = initial_number_of_boxes
     boxes_lost = 0
     number_of_doses_in_box = float(dose_entry.get().replace(',', '.'))
     doses_taken_daily = float(usage_entry.get().replace(',', '.'))
@@ -123,23 +174,32 @@ def calculate_pills_yearly():
     if days_passed_since_issue > 30:
         boxes_lost = int((days_passed_since_issue * doses_taken_daily) // number_of_doses_in_box)
         message += f"Przepadło {boxes_lost} op.\n"
-        number_of_boxes_left = number_of_boxes - boxes_lost
+        number_of_boxes_left = initial_number_of_boxes - boxes_lost
 
     boxes_to_give = int((doses_taken_daily * 120) // number_of_doses_in_box)
-    print(type(boxes_to_give))
+    if boxes_to_give == 0:
+        boxes_to_give = 1
     if boxes_to_give >= number_of_boxes_left:
         if boxes_lost:
             message = f"Można wydać pozostałe {number_of_boxes_left} op."
         else:
             message = f"Można wydać wszystkie op."
     else:
+        boxes_left_after_first_buy = number_of_boxes_left - boxes_to_give
         days_of_therapy_3_4 = int((boxes_to_give * number_of_doses_in_box / doses_taken_daily) * 3 / 4)
         next_buy_date = (datetime.datetime.now() + datetime.timedelta(days=days_of_therapy_3_4)).strftime('%d.%m.%Y')
-        message = f"Można wydać {boxes_to_give} op.\nReszta może być wydana\nnajwcześniej po {next_buy_date}!"
-        if number_of_boxes_left > boxes_to_give + boxes_lost:
-            next_portion_box_number = boxes_to_give*2 + 1
-            message += (f"\nPozostała ilość począwszy od {next_portion_box_number}. op.\n po {days_of_therapy_3_4}"
+        next_portion = boxes_left_after_first_buy
+        if next_portion > boxes_to_give:
+            next_portion = boxes_to_give
+        message = f"Można wydać {boxes_to_give} op.\nKolejne {next_portion} op. może być wydane\nnajwcześniej po {next_buy_date}!"
+        if boxes_left_after_first_buy > 0:
+            next_portion_box_number = boxes_to_give + next_portion + 1
+            message += (f"\nPozostała ilość począwszy od {next_portion_box_number}. op.\npo {days_of_therapy_3_4} "
                         f"dniach od {boxes_to_give+1}. op.")
+        if initial_number_of_boxes > boxes_lost + boxes_to_give + next_portion:
+            maximum_amount_to_give = int((doses_taken_daily*360) // number_of_doses_in_box)
+            if maximum_amount_to_give < number_of_boxes_left:
+                message += f"\nMaksymalnie łącznie można wydać {maximum_amount_to_give} op."
 
     result_text.configure(state=tkinter.NORMAL, bg=BACKGROUND_COLOR)
     result_text.delete("1.0", tkinter.END)
@@ -196,6 +256,8 @@ def calculate_pills_monthly():
         result_text.configure(state=tkinter.DISABLED, bg="red")
         return
     boxes_to_give = int((doses_taken_daily * 120) // number_of_doses_in_box)
+    if boxes_to_give == 0:
+        boxes_to_give = 1
     print(type(boxes_to_give))
     if boxes_to_give >= number_of_boxes:
         message = f"Można wydać wszystkie op."
@@ -242,8 +304,12 @@ def check_date_correctness():
         issue_day = int(day_entry.get().replace(',', '.'))
         issue_month = int(month_entry.get().replace(',', '.'))
         issue_year = int(year_entry.get().replace(',', '.'))
-        issue_date = datetime.datetime(year=issue_year, month=issue_month, day=issue_day)
-        days_passed_since_issue = (datetime.datetime.now() - issue_date).days
+        if issue_day < 1 or issue_day > 31 or issue_month < 1 or issue_month > 12 or issue_year < 2023:
+            show_wrong_date()
+            return
+        else:
+            issue_date = datetime.datetime(year=issue_year, month=issue_month, day=issue_day)
+            days_passed_since_issue = (datetime.datetime.now() - issue_date).days
         if days_passed_since_issue < 0:
             show_wrong_date()
             return False
