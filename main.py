@@ -198,9 +198,10 @@ def calculate_pills_yearly():
             if smallest_boxes_left:
                 message += f"oraz {smallest_boxes_left} op. x {the_smallest_box} szt."
                 smallest_boxes_left = (next_portion - ((next_portion // number_of_doses_in_box) * number_of_doses_in_box)) // the_smallest_box
-                message += (f"\nKolejne {next_portion // number_of_doses_in_box} op. x {number_of_doses_in_box} szt. "
-                            f"i {smallest_boxes_left} op. x {the_smallest_box} szt. może być wydane"
-                            f"\nnajwcześniej po {next_buy_date}!")
+            message += f"\nKolejne {next_portion // number_of_doses_in_box} op. x {number_of_doses_in_box} szt. "
+            if smallest_boxes_left:
+                message += f"i {smallest_boxes_left} op. x {the_smallest_box} szt. może być wydane"
+            message += f"\nnajwcześniej po {next_buy_date}!"
         else:
             message += (f"Można wydać {doses_to_give // number_of_doses_in_box} op. x {number_of_doses_in_box} szt."
                         f"\nKolejne {next_portion // number_of_doses_in_box} op. x {number_of_doses_in_box} szt. może być wydane "
