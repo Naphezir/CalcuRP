@@ -146,6 +146,11 @@ def calculate_pills_yearly():
     number_of_doses_in_box = float(dose_entry.get().replace(',', '.'))
     doses_taken_daily = float(usage_entry.get().replace(',', '.'))
 
+    the_smallest_box = get_smallest_box(number_of_doses_in_box)
+    if not the_smallest_box:
+        calculate_pills_yearly_without_smallest_box()
+        return
+
     issue_date = datetime.datetime(year=issue_year, month=issue_month, day=issue_day)
     doses_lost = 0
     boxes_lost = 0
@@ -156,32 +161,35 @@ def calculate_pills_yearly():
     the_smallest_box = get_smallest_box(number_of_doses_in_box)
 
     doses_to_give = doses_taken_daily * 120
-    boxes_to_give = int(doses_to_give // number_of_doses_in_box)
-    if boxes_to_give == 0:
-        boxes_to_give = 1
+    # boxes_to_give = int(doses_to_give // number_of_doses_in_box)
+    # if boxes_to_give == 0:
+    #     boxes_to_give = 1
 
     if days_passed_since_issue > 30:
         doses_lost = int(days_passed_since_issue * doses_taken_daily)
         number_of_doses_left -= doses_lost
         if the_smallest_box:
             boxes_lost = doses_lost // number_of_doses_in_box
-            smallest_boxes_lost = (number_of_doses_left - (boxes_lost * number_of_doses_in_box)) // the_smallest_box
+            smallest_boxes_lost = (doses_lost - (boxes_lost * number_of_doses_in_box)) // the_smallest_box
             message += f"Przepadło {boxes_lost}op. x {number_of_doses_in_box} szt."
             if smallest_boxes_lost:
                 message += f" i {smallest_boxes_lost}op. x {the_smallest_box} szt."
         else:
-            message += f"Przepadło {boxes_lost} op."
+            message += f"Przepadło {doses_lost//number_of_doses_in_box} op.\n"
         # number_of_boxes_left = int(initial_number_of_boxes - boxes_lost)
 
     if doses_to_give >= number_of_doses_left:
-        if doses_lost:
+        if doses_lost and number_of_doses_left > 0:
             message += f"\nMożna wydać pozostałe {number_of_doses_left // number_of_doses_in_box} op. x {number_of_doses_in_box} szt."
             if the_smallest_box:
-                smallest_boxes_left = (number_of_doses_left - ((number_of_doses_left // number_of_doses_in_box) * number_of_doses_in_box)) // the_smallest_box
+                smallest_boxes_left = math.ceil((number_of_doses_left - ((number_of_doses_left // number_of_doses_in_box) * number_of_doses_in_box)) / the_smallest_box)
+                # print(smallest_boxes_left)
                 if smallest_boxes_left:
                     message += f" i {smallest_boxes_left}op. x {the_smallest_box} szt."
+        elif number_of_doses_left <= 0:
+            message = "Przepadło wszystko."
         else:
-            message = f"Można wydać wszystkie op."
+            message = "Można wydać wszystkie op."
     else:
         doses_left_after_first_buy = number_of_doses_left - doses_to_give
         if the_smallest_box:
@@ -194,7 +202,7 @@ def calculate_pills_yearly():
         if next_portion > doses_to_give:
             next_portion = doses_to_give
         if the_smallest_box:
-            message += f"Można wydać {doses_to_give // number_of_doses_in_box} op. x {number_of_doses_in_box} szt. "
+            message += f"\nMożna wydać {doses_to_give // number_of_doses_in_box} op. x {number_of_doses_in_box} szt. "
             if smallest_boxes_left:
                 message += f"oraz {smallest_boxes_left} op. x {the_smallest_box} szt."
                 smallest_boxes_left = (next_portion - ((next_portion // number_of_doses_in_box) * number_of_doses_in_box)) // the_smallest_box
@@ -215,6 +223,72 @@ def calculate_pills_yearly():
             maximum_amount_to_give = int(doses_taken_daily * 360)
             if maximum_amount_to_give < number_of_doses_left:
                 message += f"\nMaksymalnie łącznie można wydać {maximum_amount_to_give} szt."
+
+    result_text.configure(state=tkinter.NORMAL, bg=BACKGROUND_COLOR3)
+    result_text.delete("1.0", tkinter.END)
+    result_text.insert("1.0", message)
+    result_text.configure(state=tkinter.DISABLED)
+    return
+
+
+def calculate_pills_yearly_without_smallest_box():
+    message = ""
+    issue_day = int(day_entry.get().replace(',', '.'))
+    issue_month = int(month_entry.get().replace(',', '.'))
+    issue_year = int(year_entry.get().replace(',', '.'))
+    initial_number_of_boxes = float(boxes_entry.get().replace(',', '.'))
+    number_of_doses_in_box = float(dose_entry.get().replace(',', '.'))
+    doses_taken_daily = float(usage_entry.get().replace(',', '.'))
+
+    issue_date = datetime.datetime(year=issue_year, month=issue_month, day=issue_day)
+    doses_lost = 0
+    initial_number_of_doses = initial_number_of_boxes * number_of_doses_in_box
+    number_of_doses_left = initial_number_of_doses
+    days_passed_since_issue = (datetime.datetime.now() - issue_date).days
+
+    maximum_doses_to_give_once = doses_taken_daily * 120
+    maximum_doses_overall = doses_taken_daily * 360
+    if number_of_doses_left > maximum_doses_overall:
+        number_of_doses_left = maximum_doses_overall
+        message += f"Maksymalnie można wydać łącznie {maximum_doses_overall} szt. (tj. {maximum_doses_overall // number_of_doses_in_box} op.)"
+
+    if days_passed_since_issue > 30:
+        doses_lost = int(
+            ((days_passed_since_issue * doses_taken_daily) // number_of_doses_in_box) * number_of_doses_in_box)
+        boxes_lost = doses_lost // number_of_doses_in_box
+        if boxes_lost == 0:
+            boxes_lost = 1
+            doses_lost = number_of_doses_in_box
+        message += f"Przepadło {boxes_lost} op."
+        number_of_doses_left -= doses_lost
+
+    if maximum_doses_to_give_once >= number_of_doses_left:
+        if doses_lost and number_of_doses_left > 0:
+            message += f"\nMożna wydać pozostałe {number_of_doses_left // number_of_doses_in_box} op."
+        elif number_of_doses_left <= 0:
+            message = "Przepadło wszystko."
+        else:
+            message = "Można wydać wszystkie op."
+    else:
+        doses_to_give = (maximum_doses_to_give_once // number_of_doses_in_box) * number_of_doses_in_box
+        days_of_therapy_3_4 = math.ceil((doses_to_give / doses_taken_daily) * 3 / 4)
+        next_buy_date = (datetime.datetime.now() + datetime.timedelta(days=days_of_therapy_3_4)).strftime('%d.%m.%Y')
+        message += f"\nMożna wydać {doses_to_give // number_of_doses_in_box} op."
+        number_of_doses_left -= doses_to_give
+
+        while number_of_doses_left > 0:
+            if number_of_doses_left < number_of_doses_in_box:
+                message += f"\nPozostanie {number_of_doses_left} szt. Jeśli tak się da, może to być wydane najwcześniej po {next_buy_date} <<<<"
+            elif number_of_doses_left == number_of_doses_in_box:
+                message += f"\nKolejne 1 op. może być wydane najwcześniej po {next_buy_date} <<<<"
+            else:
+                if maximum_doses_to_give_once >= number_of_doses_left:
+                    doses_to_give = int((number_of_doses_left // number_of_doses_in_box) * number_of_doses_in_box)
+                    message += f"\nKolejne {doses_to_give // number_of_doses_in_box} op. może być wydane najwcześniej po {next_buy_date} <<<<"
+                    days_of_therapy_3_4 = math.ceil((doses_to_give / doses_taken_daily) * 3 / 4)
+                    next_buy_date = (datetime.datetime.now() + datetime.timedelta(days=days_of_therapy_3_4)).strftime(
+                        '%d.%m.%Y')
+            number_of_doses_left -= doses_to_give
 
     result_text.configure(state=tkinter.NORMAL, bg=BACKGROUND_COLOR3)
     result_text.delete("1.0", tkinter.END)
