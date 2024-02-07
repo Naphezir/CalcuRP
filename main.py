@@ -213,11 +213,11 @@ def calculate_pills_yearly():
             message += (f"Można wydać {doses_to_give // number_of_doses_in_box} op. x {number_of_doses_in_box} szt."
                         f"\nKolejne {next_portion // number_of_doses_in_box} op. x {number_of_doses_in_box} szt. może być wydane "
                         f"najwcześniej po {next_buy_date} <<<<")
-        # TODO
+
         if doses_left_after_first_buy - next_portion > 0:
             # next_portion_box_number = int(boxes_to_give + next_portion/number_of_doses_in_box + 1)
             message += f"\nPozostała ilość po {days_of_therapy_3_4} dniach od przyszłej realizacji."
-        # TODO
+
         if initial_number_of_doses > doses_lost + doses_to_give + next_portion:
             maximum_amount_to_give = int(doses_taken_daily * 360)
             if maximum_amount_to_give < number_of_doses_left:
