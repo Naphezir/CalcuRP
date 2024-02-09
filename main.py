@@ -29,6 +29,9 @@ def insulin():
     amount_bought_label.config(text="Podaj liczbę wkładów, jaka została wykupiona:")
     insulin_switch = True
     show_smallest_box_entry()
+    smallest_box_entry.grid_remove()
+    smallest_box_label.grid_remove()
+    smallest_box_button.grid_remove()
     return
 
 
@@ -41,6 +44,7 @@ def pills():
     amount_bought_label.config(text="Podaj liczbę sztuk, jaka została wtedy wykupiona:")
     insulin_switch = False
     show_smallest_box_entry()
+    smallest_box_button.grid()
     return
 
 
@@ -90,6 +94,8 @@ def get_smallest_box(box):
 
 
 def calculate_insulin_yearly():
+    calculate_insulin_yearly_without_smallest_box()
+    return
     message = ""
     issue_day = int(day_entry.get().replace(',', '.'))
     issue_month = int(month_entry.get().replace(',', '.'))
@@ -133,6 +139,84 @@ def calculate_insulin_yearly():
             maximum_amount_to_give = int((units_taken_daily*360) // number_of_units_in_fill)
             if maximum_amount_to_give < number_of_fills_left:
                 message += f"\nMaksymalnie łącznie można wydać {maximum_amount_to_give} wkł. czyli {maximum_amount_to_give/number_of_fills_in_box} op."
+    result_text.configure(state=tkinter.NORMAL, bg=BACKGROUND_COLOR3)
+    result_text.delete("1.0", tkinter.END)
+    result_text.insert("1.0", message)
+    result_text.configure(state=tkinter.DISABLED)
+    return
+
+
+def calculate_insulin_yearly_without_smallest_box():
+    message = ""
+    issue_day = int(day_entry.get().replace(',', '.'))
+    issue_month = int(month_entry.get().replace(',', '.'))
+    issue_year = int(year_entry.get().replace(',', '.'))
+    initial_number_of_boxes = float(boxes_entry.get().replace(',', '.'))
+    number_of_fills_in_box = int(insulin_entry.get().replace(',', '.'))
+    number_of_units_in_fill = float(dose_entry.get().replace(',', '.'))
+    units_taken_daily = float(usage_entry.get().replace(',', '.'))
+
+    issue_date = datetime.datetime(year=issue_year, month=issue_month, day=issue_day)
+    fills_lost = 0
+    initial_number_of_units = initial_number_of_boxes * number_of_fills_in_box * number_of_units_in_fill
+    number_of_fills_left = int(initial_number_of_boxes * number_of_fills_in_box)
+    days_passed_since_issue = (datetime.datetime.now() - issue_date).days
+
+    maximum_units_to_give_once = units_taken_daily * 120
+    maximum_fills_to_give_once = int(maximum_units_to_give_once//number_of_units_in_fill)
+    maximum_units_overall = units_taken_daily * 360
+    maximum_fills_overall = int(maximum_units_overall//number_of_units_in_fill)
+    if number_of_fills_left > maximum_fills_overall:
+        number_of_fills_left = maximum_fills_overall
+        message += f"Maksymalnie można wydać łącznie {int(maximum_fills_overall)} wkładów, (tj. {(maximum_fills_overall // number_of_fills_in_box)} op.)\n"
+
+    if days_passed_since_issue > 30:
+        fills_lost = int((days_passed_since_issue * units_taken_daily) // number_of_units_in_fill)
+        if fills_lost == 0:
+            fills_lost = 1
+        message += f"Przepadło {int(fills_lost)} wkładów.\n"
+        number_of_fills_left -= fills_lost
+
+    if maximum_fills_to_give_once >= number_of_fills_left:
+        if fills_lost and number_of_fills_left > 0:
+            message += f"Można wydać pozostałe {number_of_fills_left} wkładów, czyli {(number_of_fills_left // number_of_fills_in_box)} op."
+        elif number_of_fills_left <= 0:
+            message = "Przepadło wszystko."
+        else:
+            message = "Można wydać wszystkie wkłady."
+    else:
+        units_to_give = (maximum_units_to_give_once // number_of_units_in_fill) * number_of_units_in_fill
+        fills_to_give = int(units_to_give // number_of_units_in_fill)
+        days_of_therapy_3_4 = math.ceil((units_to_give / units_taken_daily) * 3 / 4)
+        next_buy_date = (datetime.datetime.now() + datetime.timedelta(days=days_of_therapy_3_4)).strftime('%d.%m.%Y')
+        message += f"Dziś można wydać {fills_to_give} wkładów, czyli {fills_to_give//number_of_fills_in_box} op."
+        number_of_fills_left -= fills_to_give
+
+        while number_of_fills_left > 0:
+            if number_of_fills_left < number_of_fills_in_box:
+                message += f"\nOstatnie {int(number_of_fills_left)} wkładów może być wydane najwcześniej po {next_buy_date} <<<<"
+                break
+            elif number_of_fills_left == number_of_fills_in_box:
+                message += f"\nOstatnie 1 op.({number_of_fills_left} wkł.) może być wydane najwcześniej po {next_buy_date} <<<<"
+                break
+            else:
+                if maximum_fills_to_give_once >= number_of_fills_left:
+                    units_to_give = int(number_of_fills_left * number_of_units_in_fill)
+                    fills_to_give = int(units_to_give//number_of_units_in_fill)
+                    message += f"\nKolejne {fills_to_give} wkładów może być wydane najwcześniej po {next_buy_date} <<<<"
+                    days_of_therapy_3_4 = math.ceil((units_to_give / units_taken_daily) * 3 / 4)
+                    next_buy_date = (datetime.datetime.strptime(next_buy_date, '%d.%m.%Y') + datetime.timedelta(days=days_of_therapy_3_4)).strftime(
+                        '%d.%m.%Y')
+                    number_of_fills_left -= fills_to_give
+                else:
+                    units_to_give = int((maximum_fills_to_give_once // number_of_units_in_fill) * number_of_units_in_fill)
+                    fills_to_give = int(units_to_give//number_of_units_in_fill)
+                    message += f"\nKolejne {fills_to_give} op. może być wydane najwcześniej po {next_buy_date} <<<<"
+                    days_of_therapy_3_4 = math.ceil((units_to_give / units_taken_daily) * 3 / 4)
+                    next_buy_date = (datetime.datetime.strptime(next_buy_date, '%d.%m.%Y') + datetime.timedelta(days=days_of_therapy_3_4)).strftime(
+                        '%d.%m.%Y')
+                    number_of_fills_left -= fills_to_give
+
     result_text.configure(state=tkinter.NORMAL, bg=BACKGROUND_COLOR3)
     result_text.delete("1.0", tkinter.END)
     result_text.insert("1.0", message)
