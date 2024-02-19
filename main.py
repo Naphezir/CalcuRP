@@ -17,6 +17,8 @@ window.columnconfigure(1, weight=1, minsize=100)
 window.columnconfigure(2, weight=1, minsize=100)
 window.rowconfigure(0, weight=1, minsize=120)
 insulin_switch = False
+previous_buys_present = False
+previous_buys_list = []
 
 
 def insulin():
@@ -60,6 +62,7 @@ def previous_buys():
     amount_bought_entry.grid()
     bought_button.grid()
     previous_buy_button.config(command=hide_previous_buys)
+    previous_buys_present = True
     return
 
 
@@ -75,6 +78,7 @@ def hide_previous_buys():
     amount_bought_entry.grid_remove()
     bought_button.grid_remove()
     previous_buy_button.config(command=previous_buys)
+    previous_buys_present = False
     return
 
 
@@ -109,11 +113,11 @@ def calculate_insulin_yearly():
     days_passed_since_issue = (datetime.datetime.now() - issue_date).days
 
     maximum_units_to_give_once = units_taken_daily * 120
-    maximum_fills_to_give_once = int(maximum_units_to_give_once//number_of_units_in_fill)
+    maximum_fills_to_give_once = int(maximum_units_to_give_once // number_of_units_in_fill)
     if maximum_fills_to_give_once == 0:
         maximum_fills_to_give_once = 1
     maximum_units_overall = units_taken_daily * 360
-    maximum_fills_overall = int(maximum_units_overall//number_of_units_in_fill)
+    maximum_fills_overall = int(maximum_units_overall // number_of_units_in_fill)
     if maximum_fills_overall == 0:
         maximum_fills_overall = 1
     if number_of_fills_left > maximum_fills_overall:
@@ -141,24 +145,25 @@ def calculate_insulin_yearly():
             fills_to_give = 1
         days_of_therapy_3_4 = math.ceil((fills_to_give * number_of_units_in_fill / units_taken_daily) * 3 / 4)
         next_buy_date = (datetime.datetime.now() + datetime.timedelta(days=days_of_therapy_3_4)).strftime('%d.%m.%Y')
-        message += f"Dziś można wydać {fills_to_give} wkłady/ów, czyli {fills_to_give/number_of_fills_in_box} op."
+        message += f"Dziś można wydać {fills_to_give} wkłady/ów, czyli {fills_to_give / number_of_fills_in_box} op."
         number_of_fills_left -= fills_to_give
 
         while number_of_fills_left > 0:
             if number_of_fills_left < maximum_fills_to_give_once:
-                message += f"\nOstatnie {int(number_of_fills_left)} wkłady/ów, (czyli {number_of_fills_left/number_of_fills_in_box} op.), może być wydane\nnajwcześniej po {next_buy_date} <<<<"
+                message += f"\nOstatnie {int(number_of_fills_left)} wkłady/ów, (czyli {number_of_fills_left / number_of_fills_in_box} op.), może być wydane\nnajwcześniej po {next_buy_date} <<<<"
                 break
             elif number_of_fills_left == maximum_fills_to_give_once:
                 message += f"\nOstatnie 1 op. ({number_of_fills_left} wkł.) może być wydane najwcześniej po {next_buy_date} <<<<"
                 break
             elif number_of_fills_left > maximum_fills_to_give_once:
                 units_to_give = int(maximum_fills_to_give_once * number_of_units_in_fill)
-                fills_to_give = int(units_to_give//number_of_units_in_fill)
+                fills_to_give = int(units_to_give // number_of_units_in_fill)
                 # if fills_to_give == 0:
                 #     fills_to_give = 1
-                message += f"\nKolejne {fills_to_give} wkłady/ów, (czyli {fills_to_give/number_of_fills_in_box} op.), może być wydane\nnajwcześniej po {next_buy_date} <<<<"
+                message += f"\nKolejne {fills_to_give} wkłady/ów, (czyli {fills_to_give / number_of_fills_in_box} op.), może być wydane\nnajwcześniej po {next_buy_date} <<<<"
                 days_of_therapy_3_4 = math.ceil((fills_to_give * number_of_units_in_fill / units_taken_daily) * 3 / 4)
-                next_buy_date = (datetime.datetime.strptime(next_buy_date, '%d.%m.%Y') + datetime.timedelta(days=days_of_therapy_3_4)).strftime(
+                next_buy_date = (datetime.datetime.strptime(next_buy_date, '%d.%m.%Y') + datetime.timedelta(
+                    days=days_of_therapy_3_4)).strftime(
                     '%d.%m.%Y')
                 number_of_fills_left -= fills_to_give
 
@@ -219,6 +224,8 @@ def calculate_pills_yearly_without_smallest_box():
             message = "Można wydać wszystkie op."
     else:
         doses_to_give = (maximum_doses_to_give_once // number_of_doses_in_box) * number_of_doses_in_box
+        if doses_to_give == 0:
+            doses_to_give = number_of_doses_in_box
         days_of_therapy_3_4 = math.ceil((doses_to_give / doses_taken_daily) * 3 / 4)
         next_buy_date = (datetime.datetime.now() + datetime.timedelta(days=days_of_therapy_3_4)).strftime('%d.%m.%Y')
         message += f"Dziś można wydać {int(doses_to_give // number_of_doses_in_box)} op."
@@ -233,17 +240,20 @@ def calculate_pills_yearly_without_smallest_box():
                 break
             else:
                 if maximum_doses_to_give_once >= number_of_doses_left:
-                    doses_to_give = int((number_of_doses_left // number_of_doses_in_box) * number_of_doses_in_box)  # always > 0
+                    doses_to_give = int(
+                        (number_of_doses_left // number_of_doses_in_box) * number_of_doses_in_box)  # always > 0
                     message += f"\nKolejne {int(doses_to_give // number_of_doses_in_box)} op. może być wydane najwcześniej po {next_buy_date} <<<<"
                     days_of_therapy_3_4 = math.ceil((doses_to_give / doses_taken_daily) * 3 / 4)
-                    next_buy_date = (datetime.datetime.strptime(next_buy_date, '%d.%m.%Y') + datetime.timedelta(days=days_of_therapy_3_4)).strftime(
+                    next_buy_date = (datetime.datetime.strptime(next_buy_date, '%d.%m.%Y') + datetime.timedelta(
+                        days=days_of_therapy_3_4)).strftime(
                         '%d.%m.%Y')
                     number_of_doses_left -= doses_to_give
                 else:
                     doses_to_give = int((maximum_doses_to_give_once // number_of_doses_in_box) * number_of_doses_in_box)
                     message += f"\nKolejne {int(doses_to_give // number_of_doses_in_box)} op. może być wydane najwcześniej po {next_buy_date} <<<<"
                     days_of_therapy_3_4 = math.ceil((doses_to_give / doses_taken_daily) * 3 / 4)
-                    next_buy_date = (datetime.datetime.strptime(next_buy_date, '%d.%m.%Y') + datetime.timedelta(days=days_of_therapy_3_4)).strftime(
+                    next_buy_date = (datetime.datetime.strptime(next_buy_date, '%d.%m.%Y') + datetime.timedelta(
+                        days=days_of_therapy_3_4)).strftime(
                         '%d.%m.%Y')
                     number_of_doses_left -= doses_to_give
 
@@ -275,7 +285,8 @@ def calculate_pills_yearly_with_smallest_box():
     if number_of_doses_left > maximum_doses_overall:
         number_of_doses_left = maximum_doses_overall
         boxes_left = int(number_of_doses_left // number_of_doses_in_box)
-        smallest_boxes_left = int((number_of_doses_left - (boxes_left * number_of_doses_in_box)) // doses_in_smallest_box)
+        smallest_boxes_left = int(
+            (number_of_doses_left - (boxes_left * number_of_doses_in_box)) // doses_in_smallest_box)
         message += f"Maksymalnie można wydać łącznie {int(maximum_doses_overall)} szt. (tj. {int(maximum_doses_overall // number_of_doses_in_box)} op.)"
         if smallest_boxes_left:
             message += f" oraz {smallest_boxes_left} op. x {doses_in_smallest_box} szt.\n"
@@ -283,11 +294,12 @@ def calculate_pills_yearly_with_smallest_box():
             message += "\n"
     if days_passed_since_issue > 30:
         initial_doses_lost = int(days_passed_since_issue * doses_taken_daily)
-        doses_lost_from_boxes = int((initial_doses_lost//number_of_doses_in_box)*number_of_doses_in_box)
-        doses_lost_from_smallest_boxes = int(((initial_doses_lost - doses_lost_from_boxes)//doses_in_smallest_box)*doses_in_smallest_box)
+        doses_lost_from_boxes = int((initial_doses_lost // number_of_doses_in_box) * number_of_doses_in_box)
+        doses_lost_from_smallest_boxes = int(
+            ((initial_doses_lost - doses_lost_from_boxes) // doses_in_smallest_box) * doses_in_smallest_box)
         doses_lost = doses_lost_from_boxes + doses_lost_from_smallest_boxes
         boxes_lost = doses_lost_from_boxes // number_of_doses_in_box
-        smallest_boxes_lost = doses_lost_from_smallest_boxes//doses_in_smallest_box
+        smallest_boxes_lost = doses_lost_from_smallest_boxes // doses_in_smallest_box
         if boxes_lost == 0 and smallest_boxes_lost == 0:
             smallest_boxes_lost = 1
             doses_lost = doses_in_smallest_box
@@ -303,8 +315,9 @@ def calculate_pills_yearly_with_smallest_box():
 
     if maximum_doses_to_give_once >= number_of_doses_left:
         if doses_lost and number_of_doses_left > 0:
-            boxes_to_give = (number_of_doses_left//number_of_doses_in_box)
-            smallest_boxes_to_give = (number_of_doses_left - (boxes_to_give*number_of_doses_in_box))//doses_in_smallest_box
+            boxes_to_give = (number_of_doses_left // number_of_doses_in_box)
+            smallest_boxes_to_give = (number_of_doses_left - (
+                        boxes_to_give * number_of_doses_in_box)) // doses_in_smallest_box
             if boxes_to_give > 0:
                 message += f"Można wydać pozostałe {int(number_of_doses_left // number_of_doses_in_box)} op. x {number_of_doses_in_box} szt."
                 if smallest_boxes_to_give > 0:
@@ -319,7 +332,8 @@ def calculate_pills_yearly_with_smallest_box():
             message = "Można wydać wszystkie op."
     else:
         doses_to_give_from_boxes = int((maximum_doses_to_give_once // number_of_doses_in_box) * number_of_doses_in_box)
-        doses_to_give_from_smallest_boxes = int(((maximum_doses_to_give_once - doses_to_give_from_boxes)//doses_in_smallest_box)*doses_in_smallest_box)
+        doses_to_give_from_smallest_boxes = int(
+            ((maximum_doses_to_give_once - doses_to_give_from_boxes) // doses_in_smallest_box) * doses_in_smallest_box)
         doses_to_give = doses_to_give_from_boxes + doses_to_give_from_smallest_boxes
         days_of_therapy_3_4 = math.ceil((doses_to_give / doses_taken_daily) * 3 / 4)
         next_buy_date = (datetime.datetime.now() + datetime.timedelta(days=days_of_therapy_3_4)).strftime('%d.%m.%Y')
@@ -344,8 +358,10 @@ def calculate_pills_yearly_with_smallest_box():
                 break
             else:
                 if number_of_doses_left <= maximum_doses_to_give_once:
-                    doses_to_give_from_boxes = int((number_of_doses_left // number_of_doses_in_box) * number_of_doses_in_box)
-                    doses_to_give_from_smallest_boxes = int(((number_of_doses_left - doses_to_give_from_boxes) // doses_in_smallest_box)*doses_in_smallest_box)
+                    doses_to_give_from_boxes = int(
+                        (number_of_doses_left // number_of_doses_in_box) * number_of_doses_in_box)
+                    doses_to_give_from_smallest_boxes = int(((
+                                                                         number_of_doses_left - doses_to_give_from_boxes) // doses_in_smallest_box) * doses_in_smallest_box)
                     doses_to_give = doses_to_give_from_boxes + doses_to_give_from_smallest_boxes
                     boxes_to_give = doses_to_give_from_boxes // number_of_doses_in_box
                     smallest_boxes_to_give = doses_to_give_from_smallest_boxes // doses_in_smallest_box
@@ -366,7 +382,8 @@ def calculate_pills_yearly_with_smallest_box():
                     doses_to_give_from_boxes = int(
                         (maximum_doses_to_give_once // number_of_doses_in_box) * number_of_doses_in_box)
                     doses_to_give_from_smallest_boxes = int(
-                        ((maximum_doses_to_give_once - doses_to_give_from_boxes) // doses_in_smallest_box)*doses_in_smallest_box)
+                        ((
+                                     maximum_doses_to_give_once - doses_to_give_from_boxes) // doses_in_smallest_box) * doses_in_smallest_box)
                     doses_to_give = doses_to_give_from_boxes + doses_to_give_from_smallest_boxes
                     boxes_to_give = doses_to_give_from_boxes // number_of_doses_in_box
                     smallest_boxes_to_give = doses_to_give_from_smallest_boxes // doses_in_smallest_box
@@ -414,7 +431,7 @@ def calculate_insulin_monthly():
     if fills_to_give >= number_of_fills_left:
         message = f"Można wydać wszystkie op."
     else:
-        message = f"Można wydać {fills_to_give} wkładów,\nczyli {fills_to_give/number_of_fills_in_box}op.\nReszta przepada!"
+        message = f"Można wydać {fills_to_give} wkładów,\nczyli {fills_to_give / number_of_fills_in_box}op.\nReszta przepada!"
 
     result_text.configure(state=tkinter.NORMAL, bg=BACKGROUND_COLOR3)
     result_text.delete("1.0", tkinter.END)
@@ -441,7 +458,7 @@ def calculate_pills_monthly():
     boxes_to_give = int((doses_taken_daily * 120) // number_of_doses_in_box)
     if boxes_to_give == 0:
         boxes_to_give = 1
-    print(type(boxes_to_give))
+    # print(type(boxes_to_give))
     if boxes_to_give >= number_of_boxes:
         message = f"Można wydać wszystkie op."
     else:
@@ -488,6 +505,7 @@ def check_date_correctness():
         issue_month = int(month_entry.get().replace(',', '.'))
         issue_year = int(year_entry.get().replace(',', '.'))
         if issue_day < 1 or issue_day > 31 or issue_month < 1 or issue_month > 12 or issue_year < 2023:
+            # TODO add every month correctness check like in add_previous_buy()
             show_wrong_date()
             return
         else:
@@ -506,6 +524,13 @@ def check_date_correctness():
 
 def show_wrong_date():
     date_issued_label.config(text="PODANO BŁĘDNĄ DATĘ", bg="red")
+    result_text.configure(state=tkinter.NORMAL, bg=BACKGROUND_COLOR)
+    result_text.delete("1.0", tkinter.END)
+    result_text.configure(state=tkinter.DISABLED)
+
+
+def show_wrong_previous_date():
+    date_bought_label.config(text="PODANO BŁĘDNE DANE", bg="red")
     result_text.configure(state=tkinter.NORMAL, bg=BACKGROUND_COLOR)
     result_text.delete("1.0", tkinter.END)
     result_text.configure(state=tkinter.DISABLED)
@@ -531,6 +556,49 @@ def show_smallest_box_entry():
         smallest_box_label.grid_remove()
 
 
+def add_previous_buy():
+    try:
+        day = int(buyday_entry.get())
+        month = int(buymonth_entry.get())
+        year = int(buyyear_entry.get())
+        amount = int(amount_bought_entry.get())
+        if not 0 < day < 32:
+            show_wrong_previous_date()
+            return
+        if not 0 < month < 13:
+            show_wrong_previous_date()
+            return
+        if year < 2022 or year > datetime.datetime.now().year:
+            show_wrong_previous_date()
+            return
+        if amount < 0:
+            show_wrong_previous_date()
+            return
+        if month in [4, 6, 9, 11] and day > 30:
+            show_wrong_previous_date()
+            return
+        if month == 2 and day > 29:
+            show_wrong_previous_date()
+            return
+    except ValueError:
+        show_wrong_previous_date()
+        return
+    else:
+        previous_buys_list.append({
+            "day": day,
+            "month": month,
+            "year": year,
+            "amount": amount,
+        })
+        print(previous_buys_list)
+        print(len(previous_buys_list))
+        print(previous_buys_list[0]["amount"])
+        date_bought_label.config(text="Podaj datę wykupienia:", bg=BACKGROUND_COLOR2)
+        result_text.configure(state=tkinter.NORMAL, bg=BACKGROUND_COLOR)
+        result_text.delete("1.0", tkinter.END)
+        result_text.configure(state=tkinter.DISABLED)
+
+
 result_text = tkinter.Text(background=BACKGROUND_COLOR, fg="#280274", font=FONT, width=65, height=7)
 result_text.configure(state=tkinter.DISABLED)
 result_text.grid(row=0, column=0)
@@ -539,12 +607,16 @@ prescription_type_frame = tkinter.Frame(bg=BACKGROUND_COLOR)
 prescription_type_frame.grid(row=0, column=1)
 prescription_type = tkinter.IntVar()
 
-yearly = tkinter.Radiobutton(prescription_type_frame, text="Rp roczna", variable=prescription_type, value=1, bg=BACKGROUND_COLOR, activebackground=BACKGROUND_COLOR, font=FONT2)
+yearly = tkinter.Radiobutton(prescription_type_frame, text="Rp roczna", variable=prescription_type, value=1,
+                             bg=BACKGROUND_COLOR, activebackground=BACKGROUND_COLOR, font=FONT2)
 yearly.grid(row=0, column=0, sticky="nw")
-monthly = tkinter.Radiobutton(prescription_type_frame, text="Rp miesięczna", variable=prescription_type, value=0, bg=BACKGROUND_COLOR, activebackground=BACKGROUND_COLOR, font=FONT2)
+monthly = tkinter.Radiobutton(prescription_type_frame, text="Rp miesięczna", variable=prescription_type, value=0,
+                              bg=BACKGROUND_COLOR, activebackground=BACKGROUND_COLOR, font=FONT2)
 monthly.grid(row=1, column=0, sticky="nw")
 smallest_box = tkinter.BooleanVar()
-smallest_box_button = tkinter.Checkbutton(prescription_type_frame, text="(Naj)mniejsze\nrefundowane\nopakowanie?", variable=smallest_box, bg=BACKGROUND_COLOR, activebackground=BACKGROUND_COLOR, font=FONT2, command=show_smallest_box_entry)
+smallest_box_button = tkinter.Checkbutton(prescription_type_frame, text="(Naj)mniejsze\nrefundowane\nopakowanie?",
+                                          variable=smallest_box, bg=BACKGROUND_COLOR, activebackground=BACKGROUND_COLOR,
+                                          font=FONT2, command=show_smallest_box_entry)
 smallest_box_button.grid(row=2, column=0, sticky="nw")
 
 # right_canvas = tkinter.Canvas(background=BACKGROUND_COLOR, width=20, height=600, highlightthickness=0)
@@ -569,7 +641,8 @@ dose_label.grid(row=3, column=0, sticky="e")
 dose_entry = tkinter.Entry(width=10, font=FONT)
 dose_entry.grid(row=3, column=1)
 
-usage_label = tkinter.Label(text="Podaj liczbę sztuk, jaką pacjent stosuje na dzień:", background=BACKGROUND_COLOR2, font=FONT)
+usage_label = tkinter.Label(text="Podaj liczbę sztuk, jaką pacjent stosuje na dzień:", background=BACKGROUND_COLOR2,
+                            font=FONT)
 usage_label.grid(row=4, column=0, sticky="e")
 usage_entry = tkinter.Entry(width=10, font=FONT)
 usage_entry.grid(row=4, column=1)
@@ -592,26 +665,32 @@ year_entry = tkinter.Entry(width=10, font=FONT)
 year_entry.grid(row=8, column=1)
 year_entry.insert(0, str(datetime.datetime.now().year))
 
-smallest_box_label = tkinter.Label(text="Jakie jest najmniejsze refundowane opakowanie:", background=BACKGROUND_COLOR2, font=FONT)
+smallest_box_label = tkinter.Label(text="Jakie jest najmniejsze refundowane opakowanie:", background=BACKGROUND_COLOR2,
+                                   font=FONT)
 smallest_box_label.grid(row=9, column=0, sticky="e")
 smallest_box_label.grid_remove()
 smallest_box_entry = tkinter.Entry(width=10, font=FONT)
 smallest_box_entry.grid(row=9, column=1)
 smallest_box_entry.grid_remove()
 
-calculate_button = tkinter.Button(text="PRZELICZ", height=4, background="#294B29", font=FONT, command=calculate_results, activebackground="#294B29")
+calculate_button = tkinter.Button(text="PRZELICZ", height=4, background="#294B29", font=FONT, command=calculate_results,
+                                  activebackground="#294B29")
 calculate_button.grid(row=6, column=2, rowspan=3, sticky="w")
 
-exit_button = tkinter.Button(text="WYJDŹ", command=window.destroy, width=8, height=4, fg="red", background="#F3CCF3", font=FONT, activebackground="#F3CCF3")
+exit_button = tkinter.Button(text="WYJDŹ", command=window.destroy, width=8, height=4, fg="red", background="#F3CCF3",
+                             font=FONT, activebackground="#F3CCF3")
 exit_button.grid(row=0, column=2, sticky="w")
 
-insulin_button = tkinter.Button(text="INSULINA", command=insulin, background=BACKGROUND_COLOR2, font=FONT2, activebackground=BACKGROUND_COLOR2)
+insulin_button = tkinter.Button(text="INSULINA", command=insulin, background=BACKGROUND_COLOR2, font=FONT2,
+                                activebackground=BACKGROUND_COLOR2)
 insulin_button.grid(row=4, column=2, sticky="w")
 
-pills_button = tkinter.Button(text="TABLETKI ITP.", command=pills, background=BACKGROUND_COLOR2, font=FONT2, activebackground=BACKGROUND_COLOR2)
+pills_button = tkinter.Button(text="TABLETKI ITP.", command=pills, background=BACKGROUND_COLOR2, font=FONT2,
+                              activebackground=BACKGROUND_COLOR2)
 pills_button.grid(row=3, column=2, sticky="w")
 
-previous_buy_button = tkinter.Button(text="Wcześniejsze\nrealizacje", command=previous_buys, background=BACKGROUND_COLOR2, font=FONT2, activebackground=BACKGROUND_COLOR2)
+previous_buy_button = tkinter.Button(text="Wcześniejsze\nrealizacje", command=previous_buys,
+                                     background=BACKGROUND_COLOR2, font=FONT2, activebackground=BACKGROUND_COLOR2)
 previous_buy_button.grid(row=9, column=2, sticky="w")
 
 line_canvas = tkinter.Canvas(background="#6C22A6", width=880, height=10, highlightthickness=0)
@@ -639,15 +718,23 @@ buyyear_entry = tkinter.Entry(width=10, font=FONT)
 buyyear_entry.grid(row=14, column=1)
 buyyear_entry.grid_remove()
 
-amount_bought_label = tkinter.Label(text="Podaj liczbę sztuk, jaka została wtedy wykupiona:", background=BACKGROUND_COLOR2, font=FONT)
+amount_bought_label = tkinter.Label(text="Podaj liczbę sztuk, jaka została wtedy wykupiona:",
+                                    background=BACKGROUND_COLOR2, font=FONT)
 amount_bought_label.grid(row=15, column=0, sticky="e")
 amount_bought_label.grid_remove()
 amount_bought_entry = tkinter.Entry(width=10, font=FONT)
 amount_bought_entry.grid(row=15, column=1)
 amount_bought_entry.grid_remove()
 
-bought_button = tkinter.Button(text="Dodaj\nrealizację", background=BACKGROUND_COLOR2, font=FONT2, activebackground=BACKGROUND_COLOR2)
+bought_button = tkinter.Button(text="Dodaj\nrealizację", command=add_previous_buy, background=BACKGROUND_COLOR2,
+                               font=FONT2, activebackground=BACKGROUND_COLOR2)
 bought_button.grid(row=13, column=2, rowspan=2, sticky="w")
 bought_button.grid_remove()
+
+previous_buys_frame = tkinter.Frame(bg=BACKGROUND_COLOR)
+previous_buys_frame.grid(row=16, column=0, sticky="nw")
+previous_buys_label = tkinter.Label(previous_buys_frame, text="", font=FONT2, bg=BACKGROUND_COLOR,
+                                    activebackground=BACKGROUND_COLOR2)
+previous_buys_label.grid(row=0, column=0)
 
 window.mainloop()
