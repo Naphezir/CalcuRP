@@ -51,6 +51,7 @@ def pills():
 
 
 def previous_buys():
+    global previous_buys_present
     date_bought_label.grid()
     buyday_label.grid()
     buyday_entry.grid()
@@ -63,10 +64,12 @@ def previous_buys():
     bought_button.grid()
     previous_buy_button.config(command=hide_previous_buys)
     previous_buys_present = True
+    previous_buys_label.grid()
     return
 
 
 def hide_previous_buys():
+    global previous_buys_present, previous_buys_list
     date_bought_label.grid_remove()
     buyday_label.grid_remove()
     buyday_entry.grid_remove()
@@ -79,6 +82,9 @@ def hide_previous_buys():
     bought_button.grid_remove()
     previous_buy_button.config(command=previous_buys)
     previous_buys_present = False
+    previous_buys_list = []
+    previous_buys_label.config(text="")
+    previous_buys_label.grid_remove()
     return
 
 
@@ -201,6 +207,7 @@ def calculate_pills_yearly_without_smallest_box():
 
     maximum_doses_to_give_once = doses_taken_daily * 120
     maximum_doses_overall = doses_taken_daily * 360
+
     if number_of_doses_left > maximum_doses_overall:
         number_of_doses_left = maximum_doses_overall
         message += f"Maksymalnie można wydać łącznie {int(maximum_doses_overall)} szt. (tj. {int(maximum_doses_overall // number_of_doses_in_box)} op.)\n"
@@ -215,8 +222,16 @@ def calculate_pills_yearly_without_smallest_box():
         message += f"Przepadło {int(boxes_lost)} op.\n"
         number_of_doses_left -= doses_lost
 
+    # TODO <<<<<<<<<<<<<<<<<<<<<<<
+    previous_buys_calculations = check_previous_buys(issue_date, maximum_doses_to_give_once, number_of_doses_left, doses_taken_daily)
+    if previous_buys_calculations:
+        issue_date = previous_buys_calculations[0]
+        number_of_doses_left = previous_buys_calculations[1]
+    else:
+        return
+
     if maximum_doses_to_give_once >= number_of_doses_left:
-        if doses_lost and number_of_doses_left > 0:
+        if (doses_lost or previous_buys_present) and number_of_doses_left > 0:
             message += f"Można wydać pozostałe {int(number_of_doses_left // number_of_doses_in_box)} op."
         elif number_of_doses_left <= 0:
             message = "Przepadło wszystko."
@@ -469,6 +484,42 @@ def calculate_pills_monthly():
     result_text.configure(state=tkinter.DISABLED)
 
 
+def check_previous_buys(issue_date, maximum_doses_to_give_once, number_of_doses_left, doses_taken_daily):
+    if previous_buys_present:
+        previously_bought_amount = 0
+        first_buy_date = datetime.datetime(year=previous_buys_list[0]["year"], month=previous_buys_list[0]["month"], day=previous_buys_list[0]["day"])
+        for buy in previous_buys_list:
+            buy_date = datetime.datetime(year=buy["year"], month=buy["month"], day=buy["day"])
+            if buy_date < issue_date:
+                result_text.configure(state=tkinter.NORMAL)
+                result_text.delete("1.0", tkinter.END)
+                result_text.insert("1.0", "PODANO BŁĘDNĄ DATĘ\nPOPRZEDNIEGO WYKUPIENIA")
+                result_text.configure(state=tkinter.DISABLED, bg="red")
+                return 0
+            previously_bought_amount += buy["amount"]
+            if buy["amount"] > maximum_doses_to_give_once or previously_bought_amount > number_of_doses_left:
+                result_text.configure(state=tkinter.NORMAL)
+                result_text.delete("1.0", tkinter.END)
+                result_text.insert("1.0", "WYDANO ZA DUŻO ! !\nKONIECZNA KOREKTA ! !")
+                result_text.configure(state=tkinter.DISABLED, bg="red")
+                return 0
+            if previously_bought_amount > maximum_doses_to_give_once:
+                if (buy_date - first_buy_date).days < math.ceil(maximum_doses_to_give_once/doses_taken_daily*3/4):
+                    result_text.configure(state=tkinter.NORMAL)
+                    result_text.delete("1.0", tkinter.END)
+                    result_text.insert("1.0", "WYDANO ZA DUŻO ! !\nKONIECZNA KOREKTA ! !")
+                    result_text.configure(state=tkinter.DISABLED, bg="red")
+                    return 0
+
+        issue_date = previous_buys_list[-1]
+        number_of_doses_left -= previously_bought_amount
+        result = (issue_date, number_of_doses_left)
+        return result
+    else:
+        result = (issue_date, number_of_doses_left)
+        return result
+
+
 def choose_calculate_yearly():
     if insulin_switch:
         calculate_insulin_yearly()
@@ -568,7 +619,7 @@ def add_previous_buy():
         if not 0 < month < 13:
             show_wrong_previous_date()
             return
-        if year < 2022 or year > datetime.datetime.now().year:
+        if year < datetime.datetime.now().year - 1 or year > datetime.datetime.now().year:
             show_wrong_previous_date()
             return
         if amount < 0:
@@ -580,6 +631,7 @@ def add_previous_buy():
         if month == 2 and day > 29:
             show_wrong_previous_date()
             return
+        # TODO add leap year
     except ValueError:
         show_wrong_previous_date()
         return
@@ -590,13 +642,18 @@ def add_previous_buy():
             "year": year,
             "amount": amount,
         })
-        print(previous_buys_list)
-        print(len(previous_buys_list))
-        print(previous_buys_list[0]["amount"])
+        # TODO change day etc. into datetime and sort list by it !!!!!!!!!!!!!!!!!!!!!!
+        # print(previous_buys_list)
+        # print(len(previous_buys_list))
+        # print(previous_buys_list[0]["amount"])
         date_bought_label.config(text="Podaj datę wykupienia:", bg=BACKGROUND_COLOR2)
         result_text.configure(state=tkinter.NORMAL, bg=BACKGROUND_COLOR)
         result_text.delete("1.0", tkinter.END)
         result_text.configure(state=tkinter.DISABLED)
+        buys = ""
+        for buy in previous_buys_list:
+            buys += f'{buy["day"]}.{buy["month"]}.{buy["year"]} zostało wykupione {buy["amount"]} szt.\n'
+        previous_buys_label.config(text=buys, font=FONT)
 
 
 result_text = tkinter.Text(background=BACKGROUND_COLOR, fg="#280274", font=FONT, width=65, height=7)
