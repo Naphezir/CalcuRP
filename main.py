@@ -227,6 +227,8 @@ def calculate_pills_yearly_without_smallest_box():
     if previous_buys_calculations:
         issue_date = previous_buys_calculations[0]
         number_of_doses_left = previous_buys_calculations[1]
+        if previous_buys_calculations[2]:
+            message += previous_buys_calculations[2]
     else:
         return
 
@@ -241,8 +243,14 @@ def calculate_pills_yearly_without_smallest_box():
         doses_to_give = (maximum_doses_to_give_once // number_of_doses_in_box) * number_of_doses_in_box
         if doses_to_give == 0:
             doses_to_give = number_of_doses_in_box
-        days_of_therapy_3_4 = math.ceil((doses_to_give / doses_taken_daily) * 3 / 4)
-        next_buy_date = (datetime.datetime.now() + datetime.timedelta(days=days_of_therapy_3_4)).strftime('%d.%m.%Y')
+        if previous_buys_calculations and previous_buys_calculations[3]:
+            doses_to_give -= previous_buys_calculations[3]
+            days_of_therapy_3_4 = math.ceil(((doses_to_give + previous_buys_calculations[3]) / doses_taken_daily) * 3 / 4)
+            next_buy_date = (previous_buys_calculations[0] + datetime.timedelta(days=days_of_therapy_3_4)).strftime(
+                '%d.%m.%Y')
+        else:
+            days_of_therapy_3_4 = math.ceil((doses_to_give / doses_taken_daily) * 3 / 4)
+            next_buy_date = (datetime.datetime.now() + datetime.timedelta(days=days_of_therapy_3_4)).strftime('%d.%m.%Y')
         message += f"Dziś można wydać {int(doses_to_give // number_of_doses_in_box)} op."
         number_of_doses_left -= doses_to_give
 
@@ -487,36 +495,42 @@ def calculate_pills_monthly():
 def check_previous_buys(issue_date, maximum_doses_to_give_once, number_of_doses_left, doses_taken_daily):
     if previous_buys_present:
         previously_bought_amount = 0
-        first_buy_date = datetime.datetime(year=previous_buys_list[0]["year"], month=previous_buys_list[0]["month"], day=previous_buys_list[0]["day"])
-        for buy in previous_buys_list:
-            buy_date = datetime.datetime(year=buy["year"], month=buy["month"], day=buy["day"])
-            if buy_date < issue_date:
+        previously_bought_portion = 0
+        first_buy_date = previous_buys_list[0]["date"]
+        for index, buy in enumerate(previous_buys_list):
+            if buy["date"] < issue_date:
                 result_text.configure(state=tkinter.NORMAL)
                 result_text.delete("1.0", tkinter.END)
                 result_text.insert("1.0", "PODANO BŁĘDNĄ DATĘ\nPOPRZEDNIEGO WYKUPIENIA")
                 result_text.configure(state=tkinter.DISABLED, bg="red")
                 return 0
             previously_bought_amount += buy["amount"]
+            previously_bought_portion += buy["amount"]
             if buy["amount"] > maximum_doses_to_give_once or previously_bought_amount > number_of_doses_left:
                 result_text.configure(state=tkinter.NORMAL)
                 result_text.delete("1.0", tkinter.END)
                 result_text.insert("1.0", "WYDANO ZA DUŻO ! !\nKONIECZNA KOREKTA ! !")
                 result_text.configure(state=tkinter.DISABLED, bg="red")
                 return 0
-            if previously_bought_amount > maximum_doses_to_give_once:
-                if (buy_date - first_buy_date).days < math.ceil(maximum_doses_to_give_once/doses_taken_daily*3/4):
+            if previously_bought_portion > maximum_doses_to_give_once:
+                if (buy["date"] - first_buy_date).days < math.ceil(maximum_doses_to_give_once/doses_taken_daily*3/4):
                     result_text.configure(state=tkinter.NORMAL)
                     result_text.delete("1.0", tkinter.END)
                     result_text.insert("1.0", "WYDANO ZA DUŻO ! !\nKONIECZNA KOREKTA ! !")
                     result_text.configure(state=tkinter.DISABLED, bg="red")
                     return 0
+                else:
+                    first_buy_date = buy["date"]
+                    previously_bought_portion = 0
 
-        issue_date = previous_buys_list[-1]
+        issue_date = previous_buys_list[-1]["date"]# + datetime.timedelta(days=math.ceil(previously_bought_portion/doses_taken_daily*3/4))
+        print(issue_date)
         number_of_doses_left -= previously_bought_amount
-        result = (issue_date, number_of_doses_left)
+        message = f"Wcześniej wykupiono {previously_bought_amount} szt.\nPozostało więc {number_of_doses_left} szt.\n"
+        result = (issue_date, number_of_doses_left, message, previously_bought_portion)
         return result
     else:
-        result = (issue_date, number_of_doses_left)
+        result = (issue_date, number_of_doses_left, 0, 0)
         return result
 
 
@@ -636,23 +650,22 @@ def add_previous_buy():
         show_wrong_previous_date()
         return
     else:
+        global previous_buys_list
         previous_buys_list.append({
-            "day": day,
-            "month": month,
-            "year": year,
+            "date": datetime.datetime(day=day, month=month, year=year),
             "amount": amount,
         })
-        # TODO change day etc. into datetime and sort list by it !!!!!!!!!!!!!!!!!!!!!!
+        previous_buys_list = sorted(previous_buys_list, key=lambda x: x["date"])
         # print(previous_buys_list)
         # print(len(previous_buys_list))
-        # print(previous_buys_list[0]["amount"])
+        # print(previous_buys_list[0]["date"])
         date_bought_label.config(text="Podaj datę wykupienia:", bg=BACKGROUND_COLOR2)
         result_text.configure(state=tkinter.NORMAL, bg=BACKGROUND_COLOR)
         result_text.delete("1.0", tkinter.END)
         result_text.configure(state=tkinter.DISABLED)
         buys = ""
         for buy in previous_buys_list:
-            buys += f'{buy["day"]}.{buy["month"]}.{buy["year"]} zostało wykupione {buy["amount"]} szt.\n'
+            buys += f'{buy["date"].strftime("%d.%m.%Y")} zostało wykupione {buy["amount"]} szt.\n'
         previous_buys_label.config(text=buys, font=FONT)
 
 
