@@ -225,7 +225,7 @@ def calculate_pills_yearly_without_smallest_box():
     # TODO <<<<<<<<<<<<<<<<<<<<<<<
     previous_buys_calculations = check_previous_buys(issue_date, maximum_doses_to_give_once, number_of_doses_left, doses_taken_daily)
     if previous_buys_calculations:
-        issue_date = previous_buys_calculations[0]
+        # issue_date = previous_buys_calculations[0]
         number_of_doses_left = previous_buys_calculations[1]
         if previous_buys_calculations[2]:
             message += previous_buys_calculations[2]
@@ -336,6 +336,15 @@ def calculate_pills_yearly_with_smallest_box():
             message += f"Przepadło {int(smallest_boxes_lost)} op. x {doses_in_smallest_box} szt.\n"
         number_of_doses_left -= doses_lost
 
+    previous_buys_calculations = check_previous_buys(issue_date, maximum_doses_to_give_once, number_of_doses_left, doses_taken_daily)
+    if previous_buys_calculations:
+        # issue_date = previous_buys_calculations[0]
+        number_of_doses_left = previous_buys_calculations[1]
+        if previous_buys_calculations[2]:
+            message += previous_buys_calculations[2]
+    else:
+        return
+
     if maximum_doses_to_give_once >= number_of_doses_left:
         if doses_lost and number_of_doses_left > 0:
             boxes_to_give = (number_of_doses_left // number_of_doses_in_box)
@@ -354,12 +363,20 @@ def calculate_pills_yearly_with_smallest_box():
         else:
             message = "Można wydać wszystkie op."
     else:
-        doses_to_give_from_boxes = int((maximum_doses_to_give_once // number_of_doses_in_box) * number_of_doses_in_box)
-        doses_to_give_from_smallest_boxes = int(
-            ((maximum_doses_to_give_once - doses_to_give_from_boxes) // doses_in_smallest_box) * doses_in_smallest_box)
-        doses_to_give = doses_to_give_from_boxes + doses_to_give_from_smallest_boxes
-        days_of_therapy_3_4 = math.ceil((doses_to_give / doses_taken_daily) * 3 / 4)
-        next_buy_date = (datetime.datetime.now() + datetime.timedelta(days=days_of_therapy_3_4)).strftime('%d.%m.%Y')
+        if previous_buys_calculations and previous_buys_calculations[3]:
+            doses_left_after_previous_buys = maximum_doses_to_give_once - previous_buys_calculations[3]
+            doses_to_give_from_boxes = int((doses_left_after_previous_buys // number_of_doses_in_box) * number_of_doses_in_box)
+            doses_to_give_from_smallest_boxes = int(((doses_left_after_previous_buys - doses_to_give_from_boxes) // doses_in_smallest_box) * doses_in_smallest_box)
+            doses_to_give = doses_to_give_from_boxes + doses_to_give_from_smallest_boxes
+            days_of_therapy_3_4 = math.ceil((doses_to_give + previous_buys_calculations[3]/ doses_taken_daily) * 3 / 4)
+            next_buy_date = (previous_buys_calculations[0] + datetime.timedelta(days=days_of_therapy_3_4)).strftime(
+                '%d.%m.%Y')
+        else:
+            doses_to_give_from_boxes = int((maximum_doses_to_give_once // number_of_doses_in_box) * number_of_doses_in_box)
+            doses_to_give_from_smallest_boxes = int(((maximum_doses_to_give_once - doses_to_give_from_boxes) // doses_in_smallest_box) * doses_in_smallest_box)
+            doses_to_give = doses_to_give_from_boxes + doses_to_give_from_smallest_boxes
+            days_of_therapy_3_4 = math.ceil((doses_to_give / doses_taken_daily) * 3 / 4)
+            next_buy_date = (datetime.datetime.now() + datetime.timedelta(days=days_of_therapy_3_4)).strftime('%d.%m.%Y')
         boxes_to_give = doses_to_give_from_boxes // number_of_doses_in_box
         smallest_boxes_to_give = doses_to_give_from_smallest_boxes // doses_in_smallest_box
         if boxes_to_give > 0:
